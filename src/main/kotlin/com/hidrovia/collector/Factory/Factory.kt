@@ -22,8 +22,8 @@ object Factory {
 
     private val sensorsApi by lazy {
         Retrofit.Builder()
-//            .baseUrl("https://hidrovia-api-stg.herokuapp.com")
-            .baseUrl("http://localhost:8080")
+            .baseUrl("https://hidrovia-api-stg.herokuapp.com")
+//            .baseUrl("http://localhost:8080")
             .addConverterFactory(GsonConverterFactory.create())
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .client(createHTTPClient())
