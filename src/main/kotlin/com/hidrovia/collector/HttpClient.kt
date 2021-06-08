@@ -29,8 +29,14 @@ class HttpSensorsService(private val sensorsAPI: SensorsAPI) : SensorService {
             }
     }
 
-    override fun addSensorData(sensorData: SensorDataRequest): Completable {
-        return sensorsAPI.addSensorData(sensorData).flatMapCompletable { Completable.complete() }
+    override fun addSensorData(sensorData: SensorDataRequest): Single<Response<SensorDataRequest>> {
+//        return return Single.just(Response.success(sensorData))
+        return sensorsAPI.addSensorData(sensorData).doAfterSuccess { println("record sent ${it.body()}") }
+    }
+
+    override fun addMultipleSensorData(sensorData: List<SensorDataRequest>): Single<Response<SensorMultipleDataResponse>> {
+//        return return Single.just(Response.success(SensorMultipleDataResponse("success")))
+        return sensorsAPI.addMultipleSensorData(SensorMultipleDataRequest(sensorData)).doAfterSuccess { println("record sent ${it.body()}") }
     }
 }
 
@@ -47,6 +53,12 @@ interface SensorsAPI {
     fun addSensorData(
         @Body body: SensorDataRequest
     ): Single<Response<SensorDataRequest>>
+
+    @Headers("Authorization: $token")
+    @POST("/api/sensors/multiple-data")
+    fun addMultipleSensorData(
+        @Body body: SensorMultipleDataRequest
+    ): Single<Response<SensorMultipleDataResponse>>
 }
 
 data class SensorsResponse(
@@ -63,3 +75,7 @@ data class SensorDataRequest(
     val calculatedValue: Float,
     val valueDate: Long
 )
+
+data class SensorMultipleDataRequest (val data: List<SensorDataRequest>)
+
+data class SensorMultipleDataResponse (val message: String)

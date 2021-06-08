@@ -1,11 +1,11 @@
 package com.hidrovia.collector
 
-import io.reactivex.Single
 import java.io.File
 import java.io.InputStream
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.*
 import kotlin.math.abs
 
 data class SensorData(
@@ -19,12 +19,14 @@ data class SensorData(
 
 class DatFileReader {
 
-    operator fun invoke(filePath: String, referenceValue: Float): List<SensorData> {
+    operator fun invoke(filePath: String, referenceValue: Float, lastValueReadDate: Long): List<SensorData> {
 
         val datFile = File(filePath)
         if (!datFile.exists()) {
             println("Could not read data for sensor. File does not exists ($filePath)")
             return listOf()
+        } else {
+            println("Processing file: ($filePath)")
         }
         val inputStream: InputStream = datFile.inputStream()
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -33,24 +35,36 @@ class DatFileReader {
         var i = 0
         inputStream.bufferedReader()
             .forEachLine {
-                i++
-                if (i < 5) return@forEachLine
-                val values = it.split(",")
+                try {
+                    i++
+                    if (i < 5 || it.contains("..........")) return@forEachLine
+                    val values = it.split(",")
 
-                val rawTimestamp = values[0].replace("\"", "")
-                val timestamp = LocalDateTime.parse(rawTimestamp, formatter).toInstant(ZoneOffset.UTC).toEpochMilli()
-                val record = values[1].toLong()
-                val rawValue = values[2].toFloat()
+                    val rawTimestamp = values[0].replace("\"", "")
+                    val timestamp = LocalDateTime.parse(rawTimestamp.trim(), formatter).toInstant(ZoneOffset.UTC).toEpochMilli()
+                    val record = values[1].toLong()
+                    val rawValue = values[2]
+                        .replace("\"", "")
+                        .replace("NAN", "0")
+                        .replace("NaN", "0")
+                        .replace("nan", "0")
+                        .toFloat()
 
-                val calculatedValue = rawValue.let { value ->
-                    if (value < 0)
-                        abs(value) + referenceValue
-                    else
-                        value + referenceValue
+                    val calculatedValue = rawValue.let { value ->
+                        if (value < 0)
+                            abs(value) + referenceValue
+                        else
+                            value + referenceValue
+                    }
+
+                    val sensorData = SensorData(timestamp, record, rawValue, calculatedValue, rawTimestamp)
+                    val minTimeStamp = LocalDateTime.parse("2021-04-01 00:00:00".trim(), formatter).toInstant(ZoneOffset.UTC).toEpochMilli()
+                    if (timestamp > minTimeStamp  && timestamp > lastValueReadDate) {
+                        sensorDataList.add(sensorData)
+                    }
+                } catch (e: Error) {
+                    println("error parsing record $it")
                 }
-
-                val sensorData = SensorData(timestamp, record, rawValue, calculatedValue, rawTimestamp)
-                sensorDataList.add(sensorData)
             }
         return sensorDataList.toList()
     }

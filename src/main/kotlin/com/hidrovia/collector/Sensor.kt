@@ -7,5 +7,6 @@ data class Sensor (
     val filePath: String,
     val idLoggerNet: String,
     val referenceValue: Float,
-    val refreshIntervalMilliseconds: Long
+    val refreshIntervalMilliseconds: Long,
+    val lastValueReadDate: Long
 )
